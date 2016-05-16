@@ -31,7 +31,7 @@ public class DeathStar {
 	static ColorSensor color;
 	static boolean gotIt, supressed;
 	static DifferentialPilot pilot;
-	static Navigator nav;
+	static Navigator navigator;
 	static NXTRegulatedMotor leftMotor, rightMotor;
 	// Using this points considering the left lower corner as 0,0
 	static Waypoint pRLineB, pRLineE, pLLineB, pLLineE, pMyCenter, pECenter, pGoal;
@@ -63,9 +63,8 @@ public class DeathStar {
 
 		pilot = new DifferentialPilot( 5.6f, 11.2f, leftMotor, rightMotor, false); 
 		OdometryPoseProvider position = new OdometryPoseProvider(pilot);
-		Pose p = new Pose(pMyCenter.x,pMyCenter.y, pMyCenter.angle());
 		position.setPose(new Pose(pMyCenter.x, pMyCenter.y, 90 ));
-		nav = new Navigator(pilot, position);
+		navigator = new Navigator(pilot, position);
 		
 		
 		pilot.setTravelSpeed(speed);
@@ -95,11 +94,11 @@ public class DeathStar {
 class ScoreGoal implements Behavior {
 	private boolean suppressed = false;
 	private DifferentialPilot pilot;
-	private Navigator nav;
+	private Navigator navigator;
 
 	public ScoreGoal() {
 		pilot = DeathStar.pilot;
-		nav = DeathStar.nav;
+		navigator = DeathStar.navigator;
 	}
 
 	public boolean takeControl() {
@@ -114,9 +113,9 @@ class ScoreGoal implements Behavior {
 		LCD.clear();
 		LCD.drawString("ScoreGoal",0,1);
 		suppressed = false;
-		nav.goTo(DeathStar.pECenter);
-		nav.goTo(DeathStar.pGoal);
-		nav.goTo(DeathStar.pECenter);
+		navigator.goTo(DeathStar.pECenter);
+		navigator.goTo(DeathStar.pGoal);
+		navigator.goTo(DeathStar.pECenter);
 	}
 
 	
@@ -126,12 +125,12 @@ class DetectBlock implements Behavior {
 	private UltrasonicSensor sonar;
 	private boolean gotIt, supressed;
 	private DifferentialPilot pilot;
-	private Navigator nav;
+	private Navigator navigator;
 
 	public DetectBlock() {
 		gotIt = false;
 		pilot = DeathStar.pilot;
-		nav = DeathStar.nav;
+		navigator = DeathStar.navigator;
 		sonar = DeathStar.sonicDown;
 	}
 
@@ -187,13 +186,13 @@ class DriveForward implements Behavior {
 	private UltrasonicSensor sonar;
 	private boolean gotIt, supressed;
 	private DifferentialPilot pilot;
-	private Navigator nav;
+	private Navigator navigator;
 
 	public DriveForward() {
 		gotIt = false;
 		pilot = DeathStar.pilot;
 		sonar = DeathStar.sonicDown;
-		nav = DeathStar.nav;
+		navigator = DeathStar.navigator;
 	}
 
 	public boolean takeControl() {
@@ -214,20 +213,20 @@ class DriveForward implements Behavior {
 		
 		if(DeathStar.lastLine == 'R'){ destination = DeathStar.pRLineE;System.out.println("Going to Right End");}
 		else {destination = DeathStar.pLLineE;System.out.println("Going to Left End");}		
-		nav.goTo(destination);
-		while (!supressed && nav.isMoving()) {
+		navigator.goTo(destination);
+		while (!supressed && navigator.isMoving()) {
 		//	Pose p = nav.getPoseProvider().getPose();
 		//	System.out.println((int) p.getX()+"  ||  "+ (int )p.getY());
 			Thread.yield();
 		}
-		nav.stop();
+		navigator.stop();
 		if(!supressed) DeathStar.isInLine = false;
 	}
 }
 
 class GoToLine implements Behavior {
 	private DifferentialPilot pilot;
-	private Navigator nav = DeathStar.nav;
+	private Navigator navigator = DeathStar.navigator;
 	private UltrasonicSensor sonar;
 	private boolean gotIt, supressed;
 
@@ -246,7 +245,7 @@ class GoToLine implements Behavior {
 
 	public void action() {
 		LCD.clear();
-		LCD.drawString("GoToLine = " + nav.getPoseProvider().getPose(),0,1);
+		LCD.drawString("GoToLine = " + navigator.getPoseProvider().getPose(),0,1);
 		supressed = false;
 		int distCenterToLine = 40;
 		Waypoint wp;
@@ -265,8 +264,8 @@ class GoToLine implements Behavior {
 		}
 		
 		// If "esta no centro" vira pra direita
-		nav.goTo(wp);
-		while(!supressed && nav.isMoving())
+		navigator.goTo(wp);
+		while(!supressed && navigator.isMoving())
 		{
 			//Pose p = nav.getPoseProvider().getPose();
 			//System.out.println((int) p.getX()+"  ||  "+ (int )p.getY());
