@@ -6,6 +6,7 @@ import lejos.nxt.Motor;
 import lejos.nxt.NXTRegulatedMotor;
 import lejos.nxt.SensorPort;
 import lejos.nxt.UltrasonicSensor;
+import lejos.nxt.addon.CompassHTSensor;
 import lejos.robotics.localization.OdometryPoseProvider;
 import lejos.robotics.navigation.DifferentialPilot;
 import lejos.robotics.navigation.Navigator;
@@ -15,29 +16,32 @@ import lejos.robotics.subsumption.Behavior;
 import lejos.robotics.subsumption.Arbitrator;
 import lejos.util.Delay;
 
-
 public class DeathStar {
 	// Constant Definitions
 	static final double speed = 20.0; // cm per sec;
 	static final double rotateSpeed = 50.0; // degrees per sec;
 	static final int distanceUp = 22;
 	static final int distanceDown = 6;
+
 	static char lastLine;
 
-	static int position; // Placeholder variable to represent position
+	static OdometryPoseProvider position;
+	static Navigator navigator;
+	static CompassHTSensor compass;
+
 	static boolean isInLine = false; //  Flag variable
 
 	static UltrasonicSensor sonicDown, sonicUp;
 	static ColorSensor color;
 	static boolean gotIt, supressed;
 	static DifferentialPilot pilot;
-	static Navigator navigator;
+
 	static NXTRegulatedMotor leftMotor, rightMotor;
 	// Using this points considering the left lower corner as 0,0
 	static Waypoint pRLineB, pRLineE, pLLineB, pLLineE, pMyCenter, pECenter, pGoal;
 
 	public static void main(String[] args) {
-		
+		Button.waitForAnyPress();
 		leftMotor = Motor.B;
 		rightMotor = Motor.A;
 		sonicDown = new UltrasonicSensor(SensorPort.S3);
@@ -61,30 +65,29 @@ public class DeathStar {
 		pGoal = new Waypoint(65, 141, 90);
 		
 
-		pilot = new DifferentialPilot( 5.6f, 11.2f, leftMotor, rightMotor, false); 
-		OdometryPoseProvider position = new OdometryPoseProvider(pilot);
-		position.setPose(new Pose(pMyCenter.x, pMyCenter.y, 90 ));
+		pilot = new DifferentialPilot( 5.6f, 11.2f, leftMotor, rightMotor, false);
+		position = new OdometryPoseProvider(pilot);
 		navigator = new Navigator(pilot, position);
+		compass = new CompassHTSensor(SensorPort.S4);
+		compass.resetCartesianZero();
+		
+		position.setPose(new Pose(pMyCenter.x, pMyCenter.y, 90 ));
 		
 		
 		pilot.setTravelSpeed(speed);
 		pilot.setRotateSpeed(rotateSpeed);
 		// 	pilot.setAcceleration(20);
 
-		Button.waitForAnyPress();
+		
 		Delay.msDelay(1000);
-		
-		
-		
-		
-		
-
-		Behavior b1 = new GoToLine(); 
+	        
+		Behavior b1 = new GoToLine();
 		Behavior b4 = new ScoreGoal();
 		Behavior b3 = new DriveForward();
 		Behavior b2 = new DetectBlock();
-
-		Behavior[] behaviorList = { b1, b3, b2, b4 };
+		Behavior b5 = new DeadReckoning();
+		
+		Behavior[] behaviorList = { b1, b3, b2, b4, b5 };
 		Arbitrator arby = new Arbitrator(behaviorList);
 		arby.start();
 	} 
@@ -274,5 +277,48 @@ class GoToLine implements Behavior {
 		
 		if(supressed) DeathStar.lastLine = DeathStar.lastLine == 'R'? 'L': 'R';	
 		else DeathStar.isInLine = true;
+		//Button.waitForAnyPress();
+	}
+}
+
+
+
+class DeadReckoning implements Behavior {
+	private boolean supressed;
+	private OdometryPoseProvider position;
+	private Navigator navigator;
+	private CompassHTSensor compass;
+	private final float e = 15; // erro mínimo
+
+	public DeadReckoning() {
+		navigator = DeathStar.navigator;
+		compass = DeathStar.compass;
+		position = DeathStar.position;
+	}
+
+	public boolean takeControl() {
+		return (Math.abs(position.getPose().getHeading() - correctAngle(compass.getDegreesCartesian())) >= e);
+	}
+
+	public void suppress() {
+		supressed = true;
+	}
+
+	public void action() {
+		System.out.println("DeadReckoning");
+		System.out.println("Pose: " + position.getPose().getHeading());
+		System.out.println("Compass: " + compass.getDegreesCartesian());
+		position.setPose(new Pose(position.getPose().getX(), position.getPose().getY(), correctAngle(compass.getDegreesCartesian())));
+		System.out.println("NewPose: " + position.getPose().getHeading());
+//		Button.waitForAnyPress();
+		supressed = false;
+		
+	}
+	
+	private float correctAngle(float angle) {
+		if (angle > 180) {
+			return angle - 360;
+		}
+		return angle;
 	}
 }
