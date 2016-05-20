@@ -54,12 +54,10 @@ public class DeathStar {
 		pRLineB = new Waypoint(105, 37, 90);
 		
 		pRLineE = new Waypoint(105, 113, 90);
-		pLLineE = new Waypoint(25, 37, 270);
-		pLLineB = new Waypoint(25, 113, 270);
+		pLLineE = new Waypoint(25, 37, 90);
+		pLLineB = new Waypoint(25, 113, 90);
 		
 		pMyCenter = new Waypoint(65, 37, 90);
-		
-		
 		
 		pECenter = new Waypoint(65, 113, 90);
 		pGoal = new Waypoint(65, 141, 90);
@@ -87,12 +85,12 @@ public class DeathStar {
 		Behavior b2 = new DetectBlock();
 		Behavior b5 = new DeadReckoning();
 		
+//		Behavior[] behaviorList = { b1, b3, b2, b4 };
 		Behavior[] behaviorList = { b1, b3, b2, b4, b5 };
 		Arbitrator arby = new Arbitrator(behaviorList);
 		arby.start();
 	} 
 }
-
 
 class ScoreGoal implements Behavior {
 	private boolean suppressed = false;
@@ -119,9 +117,7 @@ class ScoreGoal implements Behavior {
 		navigator.goTo(DeathStar.pECenter);
 		navigator.goTo(DeathStar.pGoal);
 		navigator.goTo(DeathStar.pECenter);
-	}
-
-	
+	}	
 }
 
 class DetectBlock implements Behavior {
@@ -216,7 +212,7 @@ class DriveForward implements Behavior {
 		
 		if(DeathStar.lastLine == 'R'){ destination = DeathStar.pRLineE;System.out.println("Going to Right End");}
 		else {destination = DeathStar.pLLineE;System.out.println("Going to Left End");}		
-		navigator.goTo(destination);
+		navigator.goTo(destination.x, destination.y);
 		while (!supressed && navigator.isMoving()) {
 		//	Pose p = nav.getPoseProvider().getPose();
 		//	System.out.println((int) p.getX()+"  ||  "+ (int )p.getY());
@@ -267,7 +263,7 @@ class GoToLine implements Behavior {
 		}
 		
 		// If "esta no centro" vira pra direita
-		navigator.goTo(wp);
+		navigator.goTo(wp.x,wp.y);
 		while(!supressed && navigator.isMoving())
 		{
 			//Pose p = nav.getPoseProvider().getPose();
@@ -280,8 +276,6 @@ class GoToLine implements Behavior {
 		//Button.waitForAnyPress();
 	}
 }
-
-
 
 class DeadReckoning implements Behavior {
 	private boolean supressed;
@@ -297,7 +291,7 @@ class DeadReckoning implements Behavior {
 	}
 
 	public boolean takeControl() {
-		return (Math.abs(position.getPose().getHeading() - correctAngle(compass.getDegreesCartesian())) >= e);
+		return (diffAngle(position.getPose().getHeading(), correctAngle(compass.getDegreesCartesian())) >= e);
 	}
 
 	public void suppress() {
@@ -305,13 +299,31 @@ class DeadReckoning implements Behavior {
 	}
 
 	public void action() {
+//		float oldHeading = position.getPose().getHeading();
 		System.out.println("DeadReckoning");
 		System.out.println("Pose: " + position.getPose().getHeading());
 		System.out.println("Compass: " + compass.getDegreesCartesian());
-		position.setPose(new Pose(position.getPose().getX(), position.getPose().getY(), correctAngle(compass.getDegreesCartesian())));
+		float compassHeading = correctAngle(compass.getDegreesCartesian());
+		Pose pose = new Pose(position.getPose().getX(), position.getPose().getY(), compassHeading);
+		
+		
+//		DeathStar.pilot.rotate(anglesToRotate(oldHeading, compassHeading));
+		position.setPose(pose);
 		System.out.println("NewPose: " + position.getPose().getHeading());
+//		System.out.println("Rotate:"+anglesToRotate(oldHeading, compassHeading));
 //		Button.waitForAnyPress();
 		supressed = false;
+		
+	}
+	
+	private float anglesToRotate(float oldH, float newH)
+	{
+		if(oldH < 0) oldH += 360;
+		if(newH < 0) newH += 360;
+		float diff = newH - oldH;
+		if(diff > 180)
+			return 180 - diff;
+		else return diff;
 		
 	}
 	
@@ -320,5 +332,25 @@ class DeadReckoning implements Behavior {
 			return angle - 360;
 		}
 		return angle;
+	}
+	
+	private float diffAngle(float a, float b) {
+//		boolean flaga = false, flagb = false;
+//		if (a < 0) {
+//			a *= -1;
+//			flaga = true;
+//		}
+//		if (b < 0) {
+//			b *= -1;
+//			flagb = true;
+//		}
+//		if (flaga == flagb) {
+//			return Math.abs(a - b);
+//		}
+//		else {
+//			return 360 - a - b;
+//		}
+		float diff = a > b ? (a - b) : (b - a);
+		return (diff > 180) ? 360 - diff: diff;
 	}
 }
